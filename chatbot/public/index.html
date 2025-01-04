@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chatbot do Bar</title>
+  <link href="https://fonts.googleapis.com/css2?family=Sacramento&family=Varela+Round&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>Drop Chat</h2>
+    </div>
+    <div class="chat-box">
+      <div class="message bot-message">Olá, como posso te ajudar hoje? 🍹</div>
+      <div class="user-message"></div>
+    </div>
+    <div class="chat-input">
+      <button data-option="drinks">Drinks</button>
+      <button data-option="horários">Horários de funcionamento</button>
+      <button data-option="contato">Contato</button>
+      <button data-option="orçamento">Orçamento</button>
+    </div>
+    <div class="name-input hidden">
+      <input type="text" placeholder="Seu nome aqui" />
+      <button>Enviar</button>
+    </div>
+    <div class="drink-options hidden">
+      <button data-option="mojito">Mojito</button>
+      <button data-option="caipirinha">Caipirinha</button>
+      <button data-option="margarita">Margarita</button>
+      <button data-option="combo">Monte seu combo</button>
+    </div>
+    <div class="combo-options hidden">
+      <button class="finalize hidden">Finalizar</button>
+      <div class="combo-items">
+        <div class="combo-item">
+          <span class="drink-name">Mojito</span>
+          <div class="controls">
+            <button class="decrement">-</button>
+            <button class="increment">+</button>
+          </div>
+          <span class="quantity">0x</span>
+        </div>
+        <div class="combo-item">
+          <span class="drink-name">Caipirinha</span>
+          <div class="controls">
+            <button class="decrement">-</button>
+            <button class="increment">+</button>
+          </div>
+          <span class="quantity">0x</span>
+        </div>
+        <div class="combo-item">
+          <span class="drink-name">Margarita</span>
+          <div class="controls">
+            <button class="decrement">-</button>
+            <button class="increment">+</button>
+          </div>
+          <span class="quantity">0x</span>
+        </div>
+      </div>
+    </div>
+    <div class="confirmation hidden">
+      <button class="confirm-yes">Sim</button>
+      <button class="confirm-no">Não</button>
+    </div>
+  </div>
+  <script>
+    const chatBox = document.querySelector('.chat-box');
+    const chatInput = document.querySelector('.chat-input');
+    const buttons = Array.from(document.querySelectorAll('.chat-input button'));
+    const nameInputContainer = document.querySelector('.name-input');
+    const nameInputField = document.querySelector('.name-input input');
+    const nameSubmitButton = document.querySelector('.name-input button');
+    const drinkOptionsContainer = document.querySelector('.drink-options');
+    const comboOptionsContainer = document.querySelector('.combo-options');
+    const finalizeButton = document.querySelector('.finalize');
+    const chatContainer = document.querySelector('.chat-container');
+    const confirmationContainer = document.querySelector('.confirmation');
+    const confirmYesButton = document.querySelector('.confirm-yes');
+    const confirmNoButton = document.querySelector('.confirm-no');
+
+    // Faz o scroll para o final da área de chat
+    function scrollToBottom() {
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Adiciona eventos aos botões de interação
+    buttons.forEach(button => {
+      button.addEventListener('click', async () => {
+        const userMessage = button.getAttribute('data-option');
+        const userDiv = document.createElement('div');
+        userDiv.className = 'message user-message';
+        userDiv.textContent = `${button.textContent}`;
+        chatBox.appendChild(userDiv);
+        scrollToBottom();
+
+        if (userMessage.toLowerCase() === 'orçamento') {
+          chatInput.classList.add('fade-out');
+          await new Promise(resolve => setTimeout(resolve, 500));
+          chatInput.classList.add('hidden');
+        }
+
+        const typingDiv = document.createElement('div');
+        typingDiv.className = 'message bot-message typing';
+        typingDiv.textContent = '...';
+        chatBox.appendChild(typingDiv);
+        scrollToBottom();
+
+        await new Promise(resolve => setTimeout(resolve, 1100));
+
+        // Envia a mensagem do usuário ao backend
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userMessage }),
+        });
+        const data = await response.json();
+
+        typingDiv.remove();
+
+        // Exibe a resposta do bot com um efeito de digitação
+        const botDiv = document.createElement('div');
+        botDiv.className = 'message bot-message';
+        chatBox.appendChild(botDiv);
+        scrollToBottom();
+
+        let i = 0;
+        const interval = setInterval(() => {
+          botDiv.textContent += data.reply.charAt(i);
+          i++;
+          if (i >= data.reply.length) {
+            clearInterval(interval);
+            scrollToBottom();
+            if (userMessage.toLowerCase() === 'orçamento') {
+              nameInputContainer.classList.remove('hidden');
+              nameInputContainer.classList.add('fade-in');
+            }
+          }
+        }, 25);
+      });
+    });
+
+    nameSubmitButton.addEventListener('click', async () => {
+      const userName = nameInputField.value.trim();
+      if (userName) {
+        const userDiv = document.createElement('div');
+        userDiv.className = 'message user-message';
+        userDiv.textContent = userName;
+        chatBox.appendChild(userDiv);
+        scrollToBottom();
+
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: userName }),
+        });
+        const data = await response.json();
+
+        const botDiv = document.createElement('div');
+        botDiv.className = 'message bot-message';
+        chatBox.appendChild(botDiv);
+        scrollToBottom();
+
+        let i = 0;
+        const interval = setInterval(() => {
+          botDiv.textContent += data.reply.charAt(i);
+          i++;
+          if (i >= data.reply.length) {
+            clearInterval(interval);
+            scrollToBottom();
+            drinkOptionsContainer.classList.remove('hidden');
+            drinkOptionsContainer.classList.add('fade-in');
+          }
+        }, 25);
+
+        nameInputContainer.classList.add('fade-out');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        nameInputContainer.remove();
+      }
+    });
+
+    drinkOptionsContainer.addEventListener('click', (event) => {
+      if (event.target.getAttribute('data-option') === 'combo') {
+        Array.from(drinkOptionsContainer.children).forEach(child => {
+          child.classList.add('fade-out');
+          setTimeout(() => {
+            child.classList.add('hidden');
+          }, 500);
+        });
+        comboOptionsContainer.classList.remove('hidden');
+        comboOptionsContainer.classList.add('fade-in');
+        chatContainer.classList.add('expand');
+      }
+    });
+
+    comboOptionsContainer.addEventListener('click', (event) => {
+      if (event.target.classList.contains('increment') || event.target.classList.contains('decrement')) {
+        const comboItem = event.target.closest('.combo-item');
+        const quantitySpan = comboItem.querySelector('.quantity');
+        let quantity = parseInt(quantitySpan.textContent) || 0;
+
+        if (event.target.classList.contains('increment')) {
+          quantity++;
+        } else if (event.target.classList.contains('decrement') && quantity > 0) {
+          quantity--;
+        }
+
+        quantitySpan.textContent = `${quantity}x`;
+
+        const totalQuantity = Array.from(comboOptionsContainer.querySelectorAll('.quantity'))
+          .reduce((total, span) => total + (parseInt(span.textContent) || 0), 0);
+
+        if (totalQuantity > 0) {
+          finalizeButton.classList.remove('hidden');
+        } else {
+          finalizeButton.classList.add('hidden');
+        }
+      }
+    });
+
+    finalizeButton.addEventListener('click', async () => {
+      const quantities = Array.from(comboOptionsContainer.querySelectorAll('.combo-item')).map(item => {
+        const drinkName = item.querySelector('.drink-name').textContent;
+        const quantity = parseInt(item.querySelector('.quantity').textContent) || 0;
+        return { drinkName, quantity };
+      });
+
+      const response = await fetch('/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantities }),
+      });
+      const data = await response.json();
+
+      comboOptionsContainer.classList.add('fade-out');
+      finalizeButton.classList.add('fade-out');
+      await new Promise(resolve => setTimeout(resolve, 500));
+      comboOptionsContainer.remove();
+      finalizeButton.classList.add('hidden');
+      chatContainer.classList.remove('expand');
+
+      const botDiv = document.createElement('div');
+      botDiv.className = 'message bot-message';
+      botDiv.textContent = data.reply;
+      chatBox.appendChild(botDiv);
+      scrollToBottom();
+
+      confirmationContainer.classList.remove('hidden');
+      confirmationContainer.classList.add('fade-in');
+    });
+
+    confirmYesButton.addEventListener('click', () => {
+      confirmationContainer.classList.add('hidden');
+      const botDiv = document.createElement('div');
+      botDiv.className = 'message bot-message';
+      botDiv.textContent = 'Pedido confirmado! Obrigado.';
+      chatBox.appendChild(botDiv);
+      scrollToBottom();
+    });
+
+    confirmNoButton.addEventListener('click', () => {
+      confirmationContainer.classList.add('hidden');
+      const botDiv = document.createElement('div');
+      botDiv.className = 'message bot-message';
+      botDiv.textContent = 'Pedido cancelado. Por favor, ajuste suas seleções.';
+      chatBox.appendChild(botDiv);
+      scrollToBottom();
+    });
+  </script>
+</body>
+</html>
